@@ -1,24 +1,18 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
 import { type ZodiacForecast, type ZodiacSign, zodiacMetadata } from "@/lib/zodiac-data";
 
-interface RawZodiacEntry {
+export interface RawZodiacEntry {
   QFriend?: string;
   color?: string;
   number?: number | string;
   summary?: string;
   love?: string;
   work?: string;
+  money?: string;
+  health?: string;
+  datetime?: string;
 }
 
-interface RawDailyPayload {
-  today?: Record<string, RawZodiacEntry>;
-  week?: Record<string, RawPeriodEntry>;
-  month?: Record<string, RawPeriodEntry>;
-}
-
-interface RawPeriodEntry {
+export interface RawPeriodEntry {
   date?: string;
   all?: string;
   love?: string;
@@ -30,65 +24,13 @@ interface RawPeriodEntry {
   error_code?: number;
 }
 
-interface ResolvedRawDataFile {
-  filePath: string;
-  resolvedDateKey: string;
-  hasExactMatch: boolean;
-  minDateKey: string;
-  maxDateKey: string;
+export interface RawDailyPayload {
+  today?: Record<string, RawZodiacEntry>;
+  week?: Record<string, RawPeriodEntry>;
+  month?: Record<string, RawPeriodEntry>;
 }
 
-export interface ZodiacDataResult {
-  signs: ZodiacSign[];
-  selectedDate: string;
-  resolvedDate: string;
-  hasExactMatch: boolean;
-  minDate: string | null;
-  maxDate: string | null;
-  timeZone: string;
-}
-
-const RAW_DATA_DIR = path.join(process.cwd(), "public", "raw");
-
-export async function getRawDateManifest() {
-  const files = await fs.readdir(RAW_DATA_DIR);
-
-  return files
-    .map((file) => path.parse(file).name)
-    .filter((name) => /^\d{8}$/.test(name))
-    .sort()
-    .map((dateKey) => dateKeyToInputValue(dateKey));
-}
-
-function normalizeTimeZone(timeZone?: string) {
-  if (!timeZone) {
-    return "UTC";
-  }
-
-  try {
-    Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
-    return timeZone;
-  } catch {
-    return "UTC";
-  }
-}
-
-function getDateKey(date: Date, timeZone: string) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  return formatter.format(date).replaceAll("-", "");
-}
-
-function dateKeyToInputValue(dateKey: string) {
-  return `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6, 8)}`;
-}
-
-function parseDateInput(dateInput: string) {
+export function parseDateInput(dateInput: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
     return null;
   }
@@ -108,17 +50,31 @@ function parseDateInput(dateInput: string) {
   return date;
 }
 
-function dateInputToDate(dateInput: string) {
-  return parseDateInput(dateInput);
-}
-
-function normalizeDateInput(dateInput?: string) {
+export function normalizeDateInput(dateInput?: string | null) {
   if (!dateInput) {
     return null;
   }
 
-  const date = dateInputToDate(dateInput);
-  return date ? dateInput : null;
+  return parseDateInput(dateInput) ? dateInput : null;
+}
+
+export function dateKeyToInputValue(dateKey: string) {
+  return `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6, 8)}`;
+}
+
+export function inputValueToDateKey(dateInput: string) {
+  return dateInput.replaceAll("-", "");
+}
+
+export function getDateInputForTimeZone(timeZone: string, date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(date);
 }
 
 function toScore(value?: number | string) {
@@ -181,48 +137,6 @@ function buildPeriodForecast(
   };
 }
 
-async function resolveRawDataFileForTimeZone(
-  targetDate: Date,
-  timeZone: string,
-): Promise<ResolvedRawDataFile | null> {
-  const files = await fs.readdir(RAW_DATA_DIR);
-  const dateKeys = files
-    .map((file) => path.parse(file).name)
-    .filter((name) => /^\d{8}$/.test(name))
-    .sort();
-
-  if (dateKeys.length === 0) {
-    return null;
-  }
-
-  const targetKey = getDateKey(targetDate, timeZone);
-  const previousMatch = [...dateKeys].reverse().find((key) => key <= targetKey);
-  const fallbackKey = previousMatch ?? dateKeys[dateKeys.length - 1];
-
-  return {
-    filePath: path.join(RAW_DATA_DIR, `${fallbackKey}.json`),
-    resolvedDateKey: fallbackKey,
-    hasExactMatch: fallbackKey === targetKey,
-    minDateKey: dateKeys[0],
-    maxDateKey: dateKeys[dateKeys.length - 1],
-  };
-}
-
-async function loadDailyPayload(targetDate: Date, timeZone: string) {
-  const resolvedFile = await resolveRawDataFileForTimeZone(targetDate, timeZone);
-
-  if (!resolvedFile) {
-    return null;
-  }
-
-  const rawText = await fs.readFile(resolvedFile.filePath, "utf8");
-
-  return {
-    payload: JSON.parse(rawText) as RawDailyPayload,
-    ...resolvedFile,
-  };
-}
-
 function buildFallbackSign(name: string): ZodiacSign {
   const meta = zodiacMetadata.find((item) => item.name === name);
 
@@ -247,24 +161,16 @@ function buildFallbackSign(name: string): ZodiacSign {
   };
 }
 
-export async function getZodiacData(
-  dateInput?: string,
-  timeZoneInput?: string,
-): Promise<ZodiacDataResult> {
-  const timeZone = normalizeTimeZone(timeZoneInput);
-  const normalizedDateInput = normalizeDateInput(dateInput);
-  const targetDate = normalizedDateInput
-    ? dateInputToDate(normalizedDateInput) ?? new Date()
-    : new Date();
-  const selectedDate =
-    normalizedDateInput ?? dateKeyToInputValue(getDateKey(targetDate, timeZone));
-  const loadedData = await loadDailyPayload(targetDate, timeZone);
-  const payload = loadedData?.payload;
+export function buildFallbackSigns() {
+  return zodiacMetadata.map((meta) => buildFallbackSign(meta.name));
+}
+
+export function buildZodiacSigns(payload?: RawDailyPayload) {
   const todayData = payload?.today ?? {};
   const weekData = payload?.week ?? {};
   const monthData = payload?.month ?? {};
 
-  const signs = zodiacMetadata.map((meta) => {
+  return zodiacMetadata.map((meta) => {
     const entry = todayData[meta.name];
 
     if (!entry) {
@@ -295,21 +201,4 @@ export async function getZodiacData(
       },
     };
   });
-
-  return {
-    signs,
-    selectedDate,
-    resolvedDate: loadedData
-      ? dateKeyToInputValue(loadedData.resolvedDateKey)
-      : selectedDate,
-    hasExactMatch: loadedData?.hasExactMatch ?? false,
-    minDate: loadedData ? dateKeyToInputValue(loadedData.minDateKey) : null,
-    maxDate: loadedData ? dateKeyToInputValue(loadedData.maxDateKey) : null,
-    timeZone,
-  };
-}
-
-export async function getZodiacSigns(targetDate = new Date()): Promise<ZodiacSign[]> {
-  const data = await getZodiacData(dateKeyToInputValue(getDateKey(targetDate, "UTC")), "UTC");
-  return data.signs;
 }
