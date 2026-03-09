@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { zodiacSigns, type ZodiacSign } from "@/lib/zodiac-data";
+import { type ZodiacSign } from "@/lib/zodiac-data";
 import { ZodiacCard } from "./zodiac-card";
 import { ZodiacDetail } from "./zodiac-detail";
 
 const elements = ["全部", "火", "土", "风", "水"] as const;
 
-export function ZodiacGrid() {
+interface ZodiacGridProps {
+  signs: ZodiacSign[];
+  resolvedDate: string;
+}
+
+export function ZodiacGrid({ signs, resolvedDate }: ZodiacGridProps) {
   const [selectedSign, setSelectedSign] = useState<ZodiacSign | null>(null);
   const [filter, setFilter] = useState<string>("全部");
 
   const filteredSigns =
-    filter === "全部"
-      ? zodiacSigns
-      : zodiacSigns.filter((s) => s.element === filter);
+    filter === "全部" ? signs : signs.filter((s) => s.element === filter);
 
   return (
     <section id="zodiac-signs" className="relative px-4 py-20">
@@ -62,6 +65,8 @@ export function ZodiacGrid() {
       {selectedSign && (
         <ZodiacDetail
           sign={selectedSign}
+          signs={signs}
+          resolvedDate={resolvedDate}
           onClose={() => setSelectedSign(null)}
           onNavigate={(sign) => setSelectedSign(sign)}
         />

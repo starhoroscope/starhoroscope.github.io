@@ -1,21 +1,30 @@
 "use client";
 
-import { X, Heart, Briefcase, Star, Sparkles, ArrowRight } from "lucide-react";
+import { X, Heart, Briefcase, Star, Sparkles, ArrowRight, Activity, Wallet } from "lucide-react";
 import {
   type ZodiacSign,
   elementColors,
   elementBgColors,
-  zodiacSigns,
 } from "@/lib/zodiac-data";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 
 interface ZodiacDetailProps {
   sign: ZodiacSign;
+  signs: ZodiacSign[];
+  resolvedDate: string;
   onClose: () => void;
   onNavigate: (sign: ZodiacSign) => void;
 }
 
-export function ZodiacDetail({ sign, onClose, onNavigate }: ZodiacDetailProps) {
+export function ZodiacDetail({
+  sign,
+  signs,
+  resolvedDate,
+  onClose,
+  onNavigate,
+}: ZodiacDetailProps) {
+  const [activeForecast, setActiveForecast] = useState<"daily" | "weekly" | "monthly">("daily");
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -32,7 +41,27 @@ export function ZodiacDetail({ sign, onClose, onNavigate }: ZodiacDetailProps) {
     };
   }, [handleKeyDown]);
 
-  const compatibleSign = zodiacSigns.find((s) => s.name === sign.compatibility);
+  const compatibleSign = signs.find((s) => s.name === sign.compatibility);
+  const forecast =
+    activeForecast === "daily"
+      ? sign.forecasts.daily
+      : activeForecast === "weekly"
+        ? sign.forecasts.weekly ?? {
+            rangeLabel: "本周运势",
+            summary: "本周运势暂未更新。",
+            love: "感情运势暂未更新。",
+            career: "事业运势暂未更新。",
+            health: "健康运势暂未更新。",
+            money: "财务运势暂未更新。",
+          }
+        : sign.forecasts.monthly ?? {
+            rangeLabel: "本月运势",
+            summary: "本月运势暂未更新。",
+            love: "感情运势暂未更新。",
+            career: "事业运势暂未更新。",
+            health: "健康运势暂未更新。",
+            money: "财务运势暂未更新。",
+          };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -103,18 +132,40 @@ export function ZodiacDetail({ sign, onClose, onNavigate }: ZodiacDetailProps) {
 
           {/* Daily Horoscope */}
           <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "daily", label: "日运" },
+                { key: "weekly", label: "周运" },
+                { key: "monthly", label: "月运" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() =>
+                    setActiveForecast(item.key as "daily" | "weekly" | "monthly")
+                  }
+                  className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                    activeForecast === item.key
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border bg-secondary/20 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               <h3 className="font-serif text-xl text-foreground">
-                {"今日运势"}
+                {activeForecast === "daily" ? resolvedDate : forecast.rangeLabel}
               </h3>
             </div>
             <p className="text-muted-foreground font-sans leading-relaxed text-[15px]">
-              {sign.horoscope}
+              {forecast.summary}
             </p>
           </div>
 
-          {/* Love & Career */}
+          {/* Forecast Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
               <div className="flex items-center gap-2">
@@ -122,7 +173,7 @@ export function ZodiacDetail({ sign, onClose, onNavigate }: ZodiacDetailProps) {
                 <h4 className="font-serif text-lg text-foreground">{"爱情"}</h4>
               </div>
               <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-                {sign.love}
+                {forecast.love}
               </p>
             </div>
             <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
@@ -131,75 +182,94 @@ export function ZodiacDetail({ sign, onClose, onNavigate }: ZodiacDetailProps) {
                 <h4 className="font-serif text-lg text-foreground">{"事业"}</h4>
               </div>
               <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-                {sign.career}
+                {forecast.career}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <h4 className="font-serif text-lg text-foreground">{"健康"}</h4>
+              </div>
+              <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+                {forecast.health}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-amber-300" />
+                <h4 className="font-serif text-lg text-foreground">{"财运"}</h4>
+              </div>
+              <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+                {forecast.money}
               </p>
             </div>
           </div>
 
-          {/* Lucky & Compatibility */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-primary" />
-                <h4 className="font-serif text-lg text-foreground">
-                  {"今日幸运"}
-                </h4>
-              </div>
-              <div className="flex items-center gap-4 mt-1">
-                <div>
-                  <p className="text-xs text-muted-foreground font-sans tracking-wider">
-                    {"幸运数字"}
-                  </p>
-                  <p className="text-2xl font-serif text-foreground">
-                    {sign.lucky.number}
-                  </p>
+          {activeForecast === "daily" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary" />
+                  <h4 className="font-serif text-lg text-foreground">
+                    {"今日幸运"}
+                  </h4>
                 </div>
-                <div className="w-px h-10 bg-border" />
-                <div>
-                  <p className="text-xs text-muted-foreground font-sans tracking-wider">
-                    {"幸运颜色"}
-                  </p>
-                  <p className="text-lg font-serif text-foreground">
-                    {sign.lucky.color}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {compatibleSign && (
-              <button
-                onClick={() => onNavigate(compatibleSign)}
-                className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30 hover:border-primary/30 transition-colors cursor-pointer text-left group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-pink-400" />
-                    <h4 className="font-serif text-lg text-foreground">
-                      {"最佳配对"}
-                    </h4>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-                <div className="flex items-center gap-3 mt-1">
-                  <span
-                    className="text-3xl"
-                    role="img"
-                    aria-label={compatibleSign.name}
-                  >
-                    {compatibleSign.symbol}
-                  </span>
+                <div className="flex items-center gap-4 mt-1">
                   <div>
-                    <p className="font-serif text-lg text-foreground">
-                      {compatibleSign.name}
+                    <p className="text-xs text-muted-foreground font-sans tracking-wider">
+                      {"幸运数字"}
                     </p>
-                    <p className="text-xs text-muted-foreground font-sans">
-                      {compatibleSign.dates}
+                    <p className="text-2xl font-serif text-foreground">
+                      {sign.lucky.number}
+                    </p>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div>
+                    <p className="text-xs text-muted-foreground font-sans tracking-wider">
+                      {"幸运颜色"}
+                    </p>
+                    <p className="text-lg font-serif text-foreground">
+                      {sign.lucky.color}
                     </p>
                   </div>
                 </div>
-              </button>
-            )}
-          </div>
+              </div>
+
+              {compatibleSign && (
+                <button
+                  onClick={() => onNavigate(compatibleSign)}
+                  className="flex flex-col gap-2 p-4 rounded-2xl border border-border bg-secondary/30 hover:border-primary/30 transition-colors cursor-pointer text-left group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-pink-400" />
+                      <h4 className="font-serif text-lg text-foreground">
+                        {"最佳配对"}
+                      </h4>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span
+                      className="text-3xl"
+                      role="img"
+                      aria-label={compatibleSign.name}
+                    >
+                      {compatibleSign.symbol}
+                    </span>
+                    <div>
+                      <p className="font-serif text-lg text-foreground">
+                        {compatibleSign.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-sans">
+                        {compatibleSign.dates}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

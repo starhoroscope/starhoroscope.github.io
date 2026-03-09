@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 export function SiteFooter() {
@@ -15,19 +16,37 @@ export function SiteFooter() {
             "你的每日星座指南。运势解读仅供娱乐和自我反思。请相信自己的智慧高于一切。"
           }
         </p>
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-6">
           <a
-            href="#zodiac-signs"
+            href="/#zodiac-signs"
             className="text-sm text-muted-foreground hover:text-foreground font-sans transition-colors"
           >
             {"十二星座"}
           </a>
           <a
-            href="#how-it-works"
+            href="/#how-it-works"
             className="text-sm text-muted-foreground hover:text-foreground font-sans transition-colors"
           >
             {"使用指南"}
           </a>
+          <Link
+            href="/privacy-policy"
+            className="text-sm text-muted-foreground hover:text-foreground font-sans transition-colors"
+          >
+            隐私政策
+          </Link>
+          <Link
+            href="/terms-of-service"
+            className="text-sm text-muted-foreground hover:text-foreground font-sans transition-colors"
+          >
+            服务条款
+          </Link>
+          <Link
+            href="/disclaimer"
+            className="text-sm text-muted-foreground hover:text-foreground font-sans transition-colors"
+          >
+            免责声明
+          </Link>
         </div>
         <div className="w-16 h-px bg-border" />
         <p className="text-xs text-muted-foreground font-sans">
